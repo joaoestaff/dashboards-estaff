@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 
 from data.db import get_engine
-from data.queries_funil import SQL_CHURNS, SQL_PENDENTES, SQL_ATENDIMENTO, SQL_IMPLANTACAO
+from data.queries_funil import SQL_CHURNS, SQL_PENDENTES, SQL_ATENDIMENTO, SQL_IMPLANTACAO, SQL_OPERACAO
 from components.kpi_cards import section_title, page_header, fmt_pct, fmt_num
 
 # ── Page config ───────────────────────────────────────────────────────────────

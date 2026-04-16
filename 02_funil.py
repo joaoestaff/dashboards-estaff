@@ -301,9 +301,9 @@ def _churn_row(label, n, color):
     pct = fmt_pct(n / len(df_churn_filtered) * 100) if len(df_churn_filtered) else "0.0%"
     return (
         f'<div style="display:flex;justify-content:space-between;'
-        f'align-items:center;margin-bottom:7px;">'
-        f'<span style="color:#374151;font-size:0.9rem;">{label}</span>'
-        f'<span style="font-weight:700;color:{color};font-size:0.9rem;">'
+        f'align-items:center;margin-bottom:6px;">'
+        f'<span style="color:#374151;font-size:0.85rem;">{label}</span>'
+        f'<span style="font-weight:700;color:{color};font-size:0.85rem;">'
         f'{n} <span style="color:#94A3B8;font-weight:400">({pct})</span>'
         f'</span></div>'
     )
@@ -313,22 +313,35 @@ churn_rows = "".join(
     for label, color in CHURN_CONFIG
 )
 
-st.markdown(
-    f'<div style="{PANEL}">' 
-    f'<p style="{LABEL_STYLE}margin-bottom:14px;">Resumo por Status</p>'
-    f'{churn_rows}'
-    f'<hr style="border:none;border-top:1px solid #E2E8F0;margin:8px 0;">'
-    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-    f'<span style="color:#374151;font-size:0.84rem;font-weight:700;">Total</span>'
-    f'<span style="font-weight:700;color:#1B3A6B;font-size:1.05rem;">{len(df_churn_filtered)}</span>'
-    f'</div></div>',
-    unsafe_allow_html=True,
-)
+col_churn_summary, col_churn_table = st.columns([1, 3], gap="large")
+
+with col_churn_summary:
+    st.markdown(
+        f'<div style="{PANEL} padding:14px 16px;">'
+        f'<p style="{LABEL_STYLE}margin-bottom:10px;">Resumo por Status</p>'
+        f'{churn_rows}'
+        f'<hr style="border:none;border-top:1px solid #E2E8F0;margin:8px 0;">'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+        f'<span style="color:#374151;font-size:0.82rem;font-weight:700;">Total</span>'
+        f'<span style="font-weight:700;color:#1B3A6B;font-size:1rem;">{len(df_churn_filtered)}</span>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
+
+with col_churn_table:
+    section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
+    show_table_churn(
+        df_churn_filtered,
+        ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
+         "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
+    )
+
 
 def _highlight_risco(row):
     if row.get("Status_Cliente") == "Em Risco":
         return ["background-color: #fef3c7"] * len(row)
     return [""] * len(row)
+
 
 def _format_churn_display(df):
     """Formata as colunas de moeda e percentual para exibição"""
@@ -348,6 +361,7 @@ def _format_churn_display(df):
         )
     return df_display
 
+
 def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> None:
     """Exibe tabela de churns com formatação e destaques"""
     if df.empty:
@@ -364,10 +378,3 @@ def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> No
         use_container_width=True,
         height=height,
     )
-
-section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
-show_table_churn(
-    df_churn_filtered,
-    ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
-     "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
-)

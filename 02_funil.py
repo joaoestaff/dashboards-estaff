@@ -282,7 +282,7 @@ st.markdown("---")
 st.markdown('<h2 style="font-size:1.8rem; margin-bottom:16px;">Acompanhamento Churns</h2>', unsafe_allow_html=True)
 
 # Filtro menor e alinhado
-col_filter, _ = st.columns([1, 3.3])
+col_filter, _ = st.columns([1.1, 3.3])
 with col_filter:
     st.markdown("<div style='margin-top:-5px'></div>", unsafe_allow_html=True)
 

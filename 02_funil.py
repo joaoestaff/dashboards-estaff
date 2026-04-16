@@ -380,7 +380,7 @@ with col_churn_summary:
 
 with col_churn_table:
     # sobe a tabela pra alinhar com o filtro
-    st.markdown("<div style='margin-top:-35px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:-45px'></div>", unsafe_allow_html=True)
 
     section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
 

@@ -335,32 +335,35 @@ def _highlight_risco(row):
 def _format_churn_display(df):
     """Formata as colunas de moeda e percentual para exibição"""
     df_display = df.copy()
-    
-    # Formata TRANSACIONADO como moeda
     if "TRANSACIONADO" in df_display.columns:
         df_display["TRANSACIONADO"] = df_display["TRANSACIONADO"].apply(
             lambda x: f"R$ {x:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if pd.notna(x) else "R$ 0,00"
         )
-    
-    # Formata TAXA_% como percentual
     if "TAXA_%" in df_display.columns:
         df_display["TAXA_%"] = df_display["TAXA_%"].apply(
             lambda x: f"{x:.2f}%" if pd.notna(x) else "0,00%"
         )
-    
     return df_display
+
+def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> None:
+    """Exibe tabela de churns com formatação e destaques"""
+    if df.empty:
+        st.info("Nenhum registro para os filtros selecionados.")
+        return
+    
+    df_display = _format_churn_display(df)
+    existing = [c for c in cols if c in df_display.columns]
+    
+    st.dataframe(
+        df_display[existing].reset_index(drop=True).style.apply(_highlight_risco, axis=1),
+        use_container_width=True,
+        height=height,
+    )
 
 with col_churn_table:
     section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
-    if df_churn_filtered.empty:
-        st.info("Nenhum registro para os filtros selecionados.")
-    else:
-        df_churn_display = _format_churn_display(df_churn_filtered)
-        cols_to_show = ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
-                        "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
-        existing_cols = [c for c in cols_to_show if c in df_churn_display.columns]
-        st.dataframe(
-            df_churn_display[existing_cols].reset_index(drop=True).style.apply(_highlight_risco, axis=1),
-            use_container_width=True,
-            height=400,
-        )
+    show_table_churn(
+        df_churn_filtered,
+        ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
+         "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
+    )

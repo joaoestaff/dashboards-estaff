@@ -378,7 +378,11 @@ with col_churn_summary:
     )
 
 with col_churn_table:
+    # Sobe o bloco para alinhar com o filtro
+    st.markdown("<div style='margin-top:-35px'></div>", unsafe_allow_html=True)
+
     section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
+
     show_table_churn(
         df_churn_filtered,
         ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes",

@@ -284,11 +284,9 @@ st.markdown('<h2 style="font-size:1.8rem; margin-bottom:20px;">Acompanhamento Ch
 col_churn_summary, col_churn_table = st.columns([1, 3], gap="large")
 
 with col_churn_summary:
-    # Filtro local para Status Churn
     status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
     sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
 
-    # Aplicar filtro local
     df_churn_filtered = df_churn.copy()
     if sel_status_churn != "Todos":
         df_churn_filtered = df_churn_filtered[df_churn_filtered["Status_Cliente"] == sel_status_churn]
@@ -359,7 +357,8 @@ with col_churn_table:
     else:
         df_churn_display = _format_churn_display(df_churn_filtered)
         st.dataframe(
-            df_churn_display.style.apply(_highlight_risco, axis=1),
+            df_churn_display[["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
+                              "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]].reset_index(drop=True).style.apply(_highlight_risco, axis=1),
             use_container_width=True,
             height=400,
         )

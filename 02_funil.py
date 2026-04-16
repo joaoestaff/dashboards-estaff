@@ -281,51 +281,49 @@ st.markdown("---")
 # ── Acompanhamento Churns ─────────────────────────────────────────────────────
 st.markdown('<h2 style="font-size:1.8rem; margin-bottom:20px;">Acompanhamento Churns</h2>', unsafe_allow_html=True)
 
-col_churn_summary, col_churn_table = st.columns([1, 3], gap="large")
+status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
+sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
 
-with col_churn_summary:
-    status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
-    sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
-
+if sel_status_churn != "Todos":
+    df_churn_filtered = df_churn[df_churn["Status_Cliente"] == sel_status_churn].copy()
+else:
     df_churn_filtered = df_churn.copy()
-    if sel_status_churn != "Todos":
-        df_churn_filtered = df_churn_filtered[df_churn_filtered["Status_Cliente"] == sel_status_churn]
 
-    CHURN_CONFIG = [
-        ("Ativo",    "#10B981"),
-        ("Em Risco", "#F59E0B"),
-        ("Churn",    "#DC2626"),
-    ]
+CHURN_CONFIG = [
+    ("Ativo",    "#10B981"),
+    ("Em Risco", "#F59E0B"),
+    ("Churn",    "#DC2626"),
+]
 
-    churn_counts = df_churn_filtered["Status_Cliente"].value_counts() if not df_churn_filtered.empty else pd.Series()
+churn_counts = df_churn_filtered["Status_Cliente"].value_counts() if not df_churn_filtered.empty else pd.Series(dtype=int)
 
-    def _churn_row(label, n, color):
-        pct = fmt_pct(n / len(df_churn_filtered) * 100) if len(df_churn_filtered) else "0.0%"
-        return (
-            f'<div style="display:flex;justify-content:space-between;'
-            f'align-items:center;margin-bottom:7px;">'
-            f'<span style="color:#374151;font-size:0.9rem;">{label}</span>'
-            f'<span style="font-weight:700;color:{color};font-size:0.9rem;">'
-            f'{n} <span style="color:#94A3B8;font-weight:400">({pct})</span>'
-            f'</span></div>'
-        )
-
-    churn_rows = "".join(
-        _churn_row(label, int(churn_counts.get(label, 0)), color)
-        for label, color in CHURN_CONFIG
+def _churn_row(label, n, color):
+    pct = fmt_pct(n / len(df_churn_filtered) * 100) if len(df_churn_filtered) else "0.0%"
+    return (
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:center;margin-bottom:7px;">'
+        f'<span style="color:#374151;font-size:0.9rem;">{label}</span>'
+        f'<span style="font-weight:700;color:{color};font-size:0.9rem;">'
+        f'{n} <span style="color:#94A3B8;font-weight:400">({pct})</span>'
+        f'</span></div>'
     )
 
-    st.markdown(
-        f'<div style="{PANEL}">'
-        f'<p style="{LABEL_STYLE}margin-bottom:14px;">Resumo por Status</p>'
-        f'{churn_rows}'
-        f'<hr style="border:none;border-top:1px solid #E2E8F0;margin:8px 0;">'
-        f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-        f'<span style="color:#374151;font-size:0.84rem;font-weight:700;">Total</span>'
-        f'<span style="font-weight:700;color:#1B3A6B;font-size:1.05rem;">{len(df_churn_filtered)}</span>'
-        f'</div></div>',
-        unsafe_allow_html=True,
-    )
+churn_rows = "".join(
+    _churn_row(label, int(churn_counts.get(label, 0)), color)
+    for label, color in CHURN_CONFIG
+)
+
+st.markdown(
+    f'<div style="{PANEL}">' 
+    f'<p style="{LABEL_STYLE}margin-bottom:14px;">Resumo por Status</p>'
+    f'{churn_rows}'
+    f'<hr style="border:none;border-top:1px solid #E2E8F0;margin:8px 0;">'
+    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+    f'<span style="color:#374151;font-size:0.84rem;font-weight:700;">Total</span>'
+    f'<span style="font-weight:700;color:#1B3A6B;font-size:1.05rem;">{len(df_churn_filtered)}</span>'
+    f'</div></div>',
+    unsafe_allow_html=True,
+)
 
 def _highlight_risco(row):
     if row.get("Status_Cliente") == "Em Risco":
@@ -335,6 +333,11 @@ def _highlight_risco(row):
 def _format_churn_display(df):
     """Formata as colunas de moeda e percentual para exibição"""
     df_display = df.copy()
+    if "TAXA_%%" in df_display.columns:
+        df_display.rename(columns={"TAXA_%%": "TAXA_%"}, inplace=True)
+    if "TAXA_PCT" in df_display.columns and "TAXA_%" not in df_display.columns:
+        df_display.rename(columns={"TAXA_PCT": "TAXA_%"}, inplace=True)
+
     if "TRANSACIONADO" in df_display.columns:
         df_display["TRANSACIONADO"] = df_display["TRANSACIONADO"].apply(
             lambda x: f"R$ {x:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if pd.notna(x) else "R$ 0,00"
@@ -353,17 +356,18 @@ def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> No
     
     df_display = _format_churn_display(df)
     existing = [c for c in cols if c in df_display.columns]
-    
+    if not existing:
+        existing = list(df_display.columns)
+
     st.dataframe(
         df_display[existing].reset_index(drop=True).style.apply(_highlight_risco, axis=1),
         use_container_width=True,
         height=height,
     )
 
-with col_churn_table:
-    section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
-    show_table_churn(
-        df_churn_filtered,
-        ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
-         "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
-    )
+section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
+show_table_churn(
+    df_churn_filtered,
+    ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
+     "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
+)

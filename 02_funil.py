@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-css_path = Path(__file__).parent.parent / "styles" / "custom.css"
+css_path = Path(__file__).parent.parent / "assets" / "custom.css"
 st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 # ── Data ──────────────────────────────────────────────────────────────────────

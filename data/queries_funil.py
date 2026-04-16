@@ -92,6 +92,15 @@ SELECT
     tc.NAME                        AS Casa,
     tsc.DESCRICAO                  AS Status_Comercial,
     tasc2.CREATED_AT               AS Data_Mudanca_Status,
+    tasc2.LAST_UPDATE              AS Ultima_Mudanca_Status,
+
+-- Tempo detalhado legível
+CONCAT(
+    TIMESTAMPDIFF(DAY, tc.DATA_CRIACAO, tasc2.LAST_UPDATE), 'd ',
+    MOD(TIMESTAMPDIFF(HOUR, tc.DATA_CRIACAO, tasc2.LAST_UPDATE), 24), 'h ',
+    MOD(TIMESTAMPDIFF(MINUTE, tc.DATA_CRIACAO, tasc2.LAST_UPDATE), 60), 'min'
+) as 'SLA_Ultimo_Status',
+
     au.FULL_NAME                   AS Usuario_Responsavel,
     tc.CNPJ,
     tc.PHONE                       AS Telefone,
@@ -108,12 +117,52 @@ LEFT JOIN T_ASSOCIATIVA_STATUS_COMERCIAL tasc2 ON (us.ID_ASSOCIATIVA = tasc2.ID)
 LEFT JOIN T_STATUS_COMERCIAL tsc     ON (tasc2.FK_STATUS_COMERCIAL = tsc.ID)
 LEFT JOIN ADMIN_USERS au             ON (tasc2.FIRST_USER = au.ID)
 WHERE us.FK_COMPANY IS NOT NULL
-  AND tasc2.FK_STATUS_COMERCIAL IN (105, 106, 107, 108)
-ORDER BY tc.ID DESC
+  AND tasc2.FK_STATUS_COMERCIAL IN (105, 106, 108)
+"""
+
+SQL_OPERACAO = """
+WITH ULTIMO_STATUS AS (
+    SELECT
+        MAX(tasc.ID) AS ID_ASSOCIATIVA,
+        tasc.FK_COMPANY
+    FROM T_ASSOCIATIVA_STATUS_COMERCIAL tasc
+    GROUP BY tasc.FK_COMPANY
+)
+SELECT
+    tc.ID                          AS ID_Casa,
+    tc.NAME                        AS Casa,
+    tsc.DESCRICAO                  AS Status_Comercial,
+    tasc2.CREATED_AT               AS Data_Mudanca_Status,
+    tasc2.LAST_UPDATE              AS Ultima_Mudanca_Status,
+
+    
+    -- Tempo detalhado legível
+CONCAT(
+    TIMESTAMPDIFF(DAY, tc.DATA_CRIACAO, tasc2.LAST_UPDATE), 'd ',
+    MOD(TIMESTAMPDIFF(HOUR, tc.DATA_CRIACAO, tasc2.LAST_UPDATE), 24), 'h ',
+    MOD(TIMESTAMPDIFF(MINUTE, tc.DATA_CRIACAO, tasc2.LAST_UPDATE), 60), 'min'
+) as 'SLA_Ultimo_Status',
+
+    au.FULL_NAME                   AS Usuario_Responsavel,
+    tc.CNPJ,
+    tc.PHONE                       AS Telefone,
+    tc.WEBSITE,
+    tc.ZIPCODE                     AS CEP,
+    tc.ADDRESS                     AS Endereço,
+    tc.DATA_CRIACAO,
+    tc.DESCRIPTION                 AS Descrição,
+    tc.LATITUDE,
+    tc.LONGITUDE
+FROM T_COMPANIES tc
+LEFT JOIN ULTIMO_STATUS us           ON (tc.ID = us.FK_COMPANY)
+LEFT JOIN T_ASSOCIATIVA_STATUS_COMERCIAL tasc2 ON (us.ID_ASSOCIATIVA = tasc2.ID)
+LEFT JOIN T_STATUS_COMERCIAL tsc     ON (tasc2.FK_STATUS_COMERCIAL = tsc.ID)
+LEFT JOIN ADMIN_USERS au             ON (tasc2.FIRST_USER = au.ID)
+WHERE us.FK_COMPANY IS NOT NULL
+  AND tasc2.FK_STATUS_COMERCIAL IN (107)
 """
 
 SQL_CHURNS = """
-#Acompanhamento Churns + Volume Financeiro
 WITH filtered AS (
   SELECT
     TC.ID        AS company_id,
@@ -145,8 +194,6 @@ last_op_in_range AS (
   WHERE last_start >= '2025-10-01'
     AND last_start < DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
 ),
-
--- ✅ CTE financeira enxuta
 financeiro AS (
   SELECT
     O.FK_COMPANIE                                AS company_id,
@@ -165,15 +212,15 @@ SELECT
   tc.NAME                                         AS Cliente,
   lo.first_start                                  AS Primeira_OP,
   lo.last_start                                   AS Ultima_OP,
-  DATE_FORMAT(lo.last_start, '%%Y-%%m')             AS Ano_Mes,
+  DATE_FORMAT(lo.last_start, '%%Y-%%m')           AS Ano_Mes,
   DATEDIFF(CURDATE(), lo.last_start)              AS Dias_Sem_OP,
   CASE
-    WHEN DATEDIFF(CURDATE(), lo.last_start) <= 30              THEN 'Ativo'
+    WHEN DATEDIFF(CURDATE(), lo.last_start) <= 30 THEN 'Ativo'
     WHEN DATEDIFF(CURDATE(), lo.last_start) BETWEEN 31 AND 90 THEN 'Em Risco'
     ELSE 'Churn'
   END                                             AS Status_Cliente,
   COALESCE(fin.TRANSACIONADO, 0)                  AS TRANSACIONADO,
-  COALESCE(fin.TAXA_PCT,      0)                  AS `TAXA_%%`
+  COALESCE(fin.TAXA_PCT, 0)                       AS TAXA_PCT
 FROM last_op_in_range lo
 JOIN  T_COMPANIES tc  ON tc.ID  = lo.company_id
 LEFT JOIN financeiro  fin ON fin.company_id = lo.company_id

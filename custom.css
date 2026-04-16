@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Base ───────────────────────────────────────────── */
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+/* ── Sidebar ────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background-color: #1B3A6B;
+}
+[data-testid="stSidebar"] * {
+    color: #E8EEF7 !important;
+}
+[data-testid="stSidebar"] .stSelectbox label,
+[data-testid="stSidebar"] .stMultiSelect label,
+[data-testid="stSidebar"] .stDateInput label {
+    color: #A8C4E8 !important;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] *,
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="popover"] * {
+    color: #1a1a1a !important;
+}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2 {
+    color: #FFFFFF !important;
+    font-size: 1rem;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+
+/* ── Page header ────────────────────────────────────── */
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #E8EEF7;
+}
+.page-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1B3A6B;
+    margin: 0;
+}
+.page-header .badge {
+    background: #FF6B35;
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ── KPI cards ──────────────────────────────────────── */
+[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-left: 4px solid #1B3A6B;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+[data-testid="stMetric"] label {
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: #64748B !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 1.65rem !important;
+    font-weight: 700 !important;
+    color: #1B3A6B !important;
+}
+[data-testid="stMetricDelta"] {
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+}
+
+/* ── Section titles ─────────────────────────────────── */
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1B3A6B;
+    margin: 24px 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #E2E8F0;
+}
+
+/* ── Divider ────────────────────────────────────────── */
+hr {
+    border: none;
+    border-top: 1px solid #E2E8F0;
+    margin: 20px 0;
+}
+
+/* ── Dataframe ──────────────────────────────────────── */
+[data-testid="stDataFrame"] {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #E2E8F0;
+}
+
+/* ── Plotly charts background ───────────────────────── */
+.js-plotly-plot {
+    border-radius: 10px;
+}
+
+/* ── Accent KPI variant (orange left border) ─────────── */
+.kpi-accent [data-testid="stMetric"] {
+    border-left-color: #FF6B35;
+}

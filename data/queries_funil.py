@@ -113,6 +113,7 @@ ORDER BY tc.ID DESC
 """
 
 SQL_CHURNS = """
+#Acompanhamento Churns + Volume Financeiro
 WITH filtered AS (
   SELECT
     TC.ID        AS company_id,
@@ -125,13 +126,11 @@ WITH filtered AS (
   INNER JOIN T_OPPORTUNITIES     TO2 ON TP.FK_OPPORTUNITIE    = TO2.ID
   INNER JOIN T_COMPANIES         TC  ON TO2.FK_COMPANIE       = TC.ID
   INNER JOIN T_PROPOSAL_TYPE     TPT ON TO2.FK_PROPOSAL_TYPE  = TPT.ID
-  LEFT  JOIN T_STATUS_PAGAMENTO  TSP ON TP.FK_STATUS_PAGAMENTO = TSP.ID
   LEFT  JOIN T_COMPANY_GROUP     TCG ON TC.FK_GROUP           = TCG.ID
   WHERE TP.FK_PROPOSAL_STATUS IN (102,103,106,115)
     AND TC.ID <> 111
     AND (TC.FK_GROUP IS NULL OR TC.FK_GROUP <> 113)
 ),
-
 last_op AS (
   SELECT 
     company_id, 
@@ -140,86 +139,43 @@ last_op AS (
   FROM filtered
   GROUP BY company_id
 ),
-
 last_op_in_range AS (
   SELECT company_id, first_start, last_start
   FROM last_op
   WHERE last_start >= '2025-10-01'
     AND last_start < DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
-)
+),
 
-SELECT
-  lo.company_id,
-  tc.NAME AS Cliente,
-  lo.first_start AS Primeira_OP,
-  lo.last_start  AS Ultima_OP,
-  DATE_FORMAT(lo.last_start, '%%Y-%%m') AS Ano_Mes,
-
-  DATEDIFF(CURDATE(), lo.last_start) AS Dias_Sem_OP,
-
-  CASE
-    WHEN DATEDIFF(CURDATE(), lo.last_start) <= 30 THEN 'Ativo'
-    WHEN DATEDIFF(CURDATE(), lo.last_start) BETWEEN 31 AND 90 THEN 'Em Risco'
-    ELSE 'Churn'
-  END AS Status_Cliente
-
-FROM last_op_in_range lo
-JOIN T_COMPANIES tc ON tc.ID = lo.company_id
-ORDER BY Ano_Mes DESC, tc.NAME;
-"""
-
-SQL_CHURNS = """
-WITH filtered AS (
+-- ✅ CTE financeira enxuta
+financeiro AS (
   SELECT
-    TC.ID        AS company_id,
-    TC.NAME      AS company_name,
-    TO2.START_AT AS start_at
-  FROM T_PROPOSALS TP 
-  INNER JOIN T_PROPOSAL_STATUS   TPS ON TP.FK_PROPOSAL_STATUS = TPS.ID
-  INNER JOIN T_FREELA            TF  ON TP.FK_FREELA          = TF.ID
-  INNER JOIN ADMIN_USERS         AU  ON TF.FK_ADMIN_USERS     = AU.ID
-  INNER JOIN T_OPPORTUNITIES     TO2 ON TP.FK_OPPORTUNITIE    = TO2.ID
-  INNER JOIN T_COMPANIES         TC  ON TO2.FK_COMPANIE       = TC.ID
-  INNER JOIN T_PROPOSAL_TYPE     TPT ON TO2.FK_PROPOSAL_TYPE  = TPT.ID
-  LEFT  JOIN T_STATUS_PAGAMENTO  TSP ON TP.FK_STATUS_PAGAMENTO = TSP.ID
-  LEFT  JOIN T_COMPANY_GROUP     TCG ON TC.FK_GROUP           = TCG.ID
-  WHERE TP.FK_PROPOSAL_STATUS IN (102,103,106,115)
-    AND TC.ID <> 111
-    AND (TC.FK_GROUP IS NULL OR TC.FK_GROUP <> 113)
-),
-
-last_op AS (
-  SELECT 
-    company_id, 
-    MIN(start_at) AS first_start,
-    MAX(start_at) AS last_start
-  FROM filtered
-  GROUP BY company_id
-),
-
-last_op_in_range AS (
-  SELECT company_id, first_start, last_start
-  FROM last_op
-  WHERE last_start >= '2025-10-01'
-    AND last_start < DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
+    O.FK_COMPANIE                                AS company_id,
+    (SUM(VW.Valor_Total) + SUM(VW.Hora_Extra))   AS TRANSACIONADO,
+    MAX(C.PERCENTUAL)                            AS TAXA_PCT
+  FROM T_PROPOSALS P
+  INNER JOIN T_OPPORTUNITIES O  ON O.ID    = P.FK_OPPORTUNITIE
+  INNER JOIN T_COMPANIES     C  ON C.ID    = O.FK_COMPANIE
+  INNER JOIN VW_HORAS_EXTRAS VW ON VW.ID   = P.ID
+  WHERE P.FK_PROPOSAL_STATUS IN (101,102,103,105,106,110,111)
+  GROUP BY O.FK_COMPANIE
 )
 
 SELECT
   lo.company_id,
-  tc.NAME AS Cliente,
-  lo.first_start AS Primeira_OP,
-  lo.last_start  AS Ultima_OP,
-  DATE_FORMAT(lo.last_start, '%%Y-%%m') AS Ano_Mes,
-
-  DATEDIFF(CURDATE(), lo.last_start) AS Dias_Sem_OP,
-
+  tc.NAME                                         AS Cliente,
+  lo.first_start                                  AS Primeira_OP,
+  lo.last_start                                   AS Ultima_OP,
+  DATE_FORMAT(lo.last_start, '%%Y-%%m')             AS Ano_Mes,
+  DATEDIFF(CURDATE(), lo.last_start)              AS Dias_Sem_OP,
   CASE
-    WHEN DATEDIFF(CURDATE(), lo.last_start) <= 30 THEN 'Ativo'
+    WHEN DATEDIFF(CURDATE(), lo.last_start) <= 30              THEN 'Ativo'
     WHEN DATEDIFF(CURDATE(), lo.last_start) BETWEEN 31 AND 90 THEN 'Em Risco'
     ELSE 'Churn'
-  END AS Status_Cliente
-
+  END                                             AS Status_Cliente,
+  COALESCE(fin.TRANSACIONADO, 0)                  AS TRANSACIONADO,
+  COALESCE(fin.TAXA_PCT,      0)                  AS `TAXA_%%`
 FROM last_op_in_range lo
-JOIN T_COMPANIES tc ON tc.ID = lo.company_id
+JOIN  T_COMPANIES tc  ON tc.ID  = lo.company_id
+LEFT JOIN financeiro  fin ON fin.company_id = lo.company_id
 ORDER BY Ano_Mes DESC, tc.NAME;
 """

@@ -281,9 +281,11 @@ st.markdown("---")
 # ── Acompanhamento Churns ─────────────────────────────────────────────────────
 st.markdown('<h2 style="font-size:1.8rem; margin-bottom:16px;">Acompanhamento Churns</h2>', unsafe_allow_html=True)
 
-# Filtro menor (alinhado à esquerda)
-col_filter, _ = st.columns([1, 3])
+# Filtro menor e alinhado
+col_filter, _ = st.columns([0.7, 3.3])
 with col_filter:
+    st.markdown("<div style='margin-top:-5px'></div>", unsafe_allow_html=True)
+
     status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
     sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
 
@@ -342,7 +344,6 @@ def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> No
     )
 
 
-# Fonte igual ao resumo de leads (mais legível)
 def _churn_row(label, n, color):
     pct = fmt_pct(n / len(df_churn_filtered) * 100) if len(df_churn_filtered) else "0.0%"
     return (
@@ -378,7 +379,7 @@ with col_churn_summary:
     )
 
 with col_churn_table:
-    # Sobe o bloco para alinhar com o filtro
+    # sobe a tabela pra alinhar com o filtro
     st.markdown("<div style='margin-top:-35px'></div>", unsafe_allow_html=True)
 
     section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")

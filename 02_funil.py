@@ -328,7 +328,7 @@ def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> No
     if df.empty:
         st.info("Nenhum registro para os filtros selecionados.")
         return
-    
+
     df_display = _format_churn_display(df)
     existing = [c for c in cols if c in df_display.columns]
     if not existing:
@@ -340,25 +340,6 @@ def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> No
         height=height,
     )
 
-
-# ── Acompanhamento Churns ─────────────────────────────────────────────────────
-st.markdown('<h2 style="font-size:1.8rem; margin-bottom:20px;">Acompanhamento Churns</h2>', unsafe_allow_html=True)
-
-status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
-sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
-
-if sel_status_churn != "Todos":
-    df_churn_filtered = df_churn[df_churn["Status_Cliente"] == sel_status_churn].copy()
-else:
-    df_churn_filtered = df_churn.copy()
-
-CHURN_CONFIG = [
-    ("Ativo",    "#10B981"),
-    ("Em Risco", "#F59E0B"),
-    ("Churn",    "#DC2626"),
-]
-
-churn_counts = df_churn_filtered["Status_Cliente"].value_counts() if not df_churn_filtered.empty else pd.Series(dtype=int)
 
 def _churn_row(label, n, color):
     pct = fmt_pct(n / len(df_churn_filtered) * 100) if len(df_churn_filtered) else "0.0%"
@@ -391,6 +372,6 @@ st.markdown(
 section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
 show_table_churn(
     df_churn_filtered,
-    ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
+    ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes",
      "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
 )

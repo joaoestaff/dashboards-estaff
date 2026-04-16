@@ -96,11 +96,7 @@ df_atend = filtrar_periodo(df_atend)
 df_impl  = filtrar_periodo(df_impl)
 df_churn = filtrar_periodo(df_churn) if "DATA_CRIACAO" in df_churn.columns else df_churn
 
-if sel_resp != "Todos":
-    df_atend = df_atend[df_atend["Usuario_Responsavel"] == sel_resp]
-    df_impl  = df_impl[df_impl["Usuario_Responsavel"] == sel_resp]
-    if "Usuario_Responsavel" in df_churn.columns:
-        df_churn = df_churn[df_churn["Usuario_Responsavel"] == sel_resp]
+sel_resp = "Todos"
 
 if sel_uf != "Todos":
     df_pend  = df_pend[df_pend["UF"] == sel_uf]

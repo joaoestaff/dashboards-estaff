@@ -29,15 +29,21 @@ def load_funil():
         pend  = pd.read_sql(SQL_PENDENTES,    conn)
         atend = pd.read_sql(SQL_ATENDIMENTO,  conn)
         impl  = pd.read_sql(SQL_IMPLANTACAO,  conn)
+        oper  = pd.read_sql(SQL_OPERACAO,     conn)
         churn = pd.read_sql(SQL_CHURNS,       conn)
-    return pend, atend, impl, churn
+    return pend, atend, impl, oper, churn
 
 try:
-    df_pend, df_atend, df_impl, df_churn = load_funil()
+    df_pend, df_atend, df_impl, df_oper, df_churn = load_funil()
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.info("Verifique as variáveis no arquivo `.env` (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD).")
     st.stop()
+
+# Garantir DATA_CRIACAO como datetime em todos os DFs
+for _df in [df_pend, df_atend, df_impl, df_oper, df_churn]:
+    if "DATA_CRIACAO" in _df.columns:
+        _df["DATA_CRIACAO"] = pd.to_datetime(_df["DATA_CRIACAO"], errors="coerce")
 
 # Garantir DATA_CRIACAO como datetime em todos os DFs
 for _df in [df_pend, df_atend, df_impl, df_churn]:
@@ -56,7 +62,7 @@ page_header("Funil Comercial", "Operacional")
 
 # ── Filtro de período ─────────────────────────────────────────────────────────
 all_dates = pd.concat([
-    df_pend["DATA_CRIACAO"], df_atend["DATA_CRIACAO"], df_impl["DATA_CRIACAO"]
+    df_pend["DATA_CRIACAO"], df_atend["DATA_CRIACAO"], df_impl["DATA_CRIACAO"], df_oper["DATA_CRIACAO"]
 ]).dropna()
 
 date_min = all_dates.min().date()
@@ -82,10 +88,11 @@ def filtrar_periodo(df):
 df_pend  = filtrar_periodo(df_pend)
 df_atend = filtrar_periodo(df_atend)
 df_impl  = filtrar_periodo(df_impl)
+df_oper  = filtrar_periodo(df_oper)
 df_churn = filtrar_periodo(df_churn) if "DATA_CRIACAO" in df_churn.columns else df_churn
 
-total  = len(df_pend) + len(df_atend) + len(df_impl)
-ativos = len(df_atend) + len(df_impl)
+total  = len(df_pend) + len(df_atend) + len(df_impl) + len(df_oper)
+ativos = len(df_atend) + len(df_impl) + len(df_oper)
 
 # ── Estilos compartilhados ────────────────────────────────────────────────────
 PANEL = (
@@ -102,6 +109,7 @@ HELP_STYLE  = "font-size:0.70rem;color:#535c69;margin:0;"
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 taxa_conv   = len(df_impl) / total * 100 if total else 0
 taxa_impl   = len(df_impl) / ativos * 100 if ativos else 0
+taxa_oper   = len(df_oper) / total * 100 if total else 0
 nao_atend   = len(df_pend) / total * 100 if total else 0
 taxa_avanco = ativos / total * 100 if total else 0
 
@@ -126,11 +134,12 @@ def _kpi_span(label, value, help_text, span):
     )
 
 kpi_cards = (
-    _kpi_span("Taxa de Conversão",    fmt_pct(taxa_conv),      "Lead → Implantação",              2) +
-    _kpi_span("Taxa em Implantação",  fmt_pct(taxa_impl),      "Sobre ativos (excl. pendentes)",  2) +
-    _kpi_span("Em Atendimento",       fmt_num(len(df_atend)),  "Leads em processo comercial",     2) +
-    _kpi_span("Não Atendimento",      fmt_pct(nao_atend),      "% de leads pendentes",            3) +
-    _kpi_span("Taxa de Avanço Total", fmt_pct(taxa_avanco),    "Leads além do estágio inicial",   3)
+    _kpi_span("Taxa de Conversão",    fmt_pct(taxa_conv),      "Lead → Implantação",              1) +
+    _kpi_span("Taxa em Implantação",  fmt_pct(taxa_impl),      "Sobre ativos (excl. pendentes)",  1) +
+    _kpi_span("Em Atendimento",       fmt_num(len(df_atend)),  "Leads em processo comercial",     1) +
+    _kpi_span("Em Operação",          fmt_num(len(df_oper)),   "Leads em operação",               1) +
+    _kpi_span("Não Atendimento",      fmt_pct(nao_atend),      "% de leads pendentes",            1) +
+    _kpi_span("Taxa de Avanço Total", fmt_pct(taxa_avanco),    "Leads além do estágio inicial",   1)
 )
 
 # ── Resumo por status ────────────────────────────────────────────────────────
@@ -150,6 +159,7 @@ all_status = pd.concat([
     df_pend["Status_Comercial"],
     df_atend["Status_Comercial"],
     df_impl["Status_Comercial"],
+    df_oper["Status_Comercial"],
 ]).fillna("1. Sem atendimento")
 
 status_counts = all_status.value_counts()
@@ -176,7 +186,7 @@ with col_kpis:
     st.markdown(
         f'<div style="{PANEL}">'
         f'<p style="{LABEL_STYLE}margin-bottom:14px;">Indicadores</p>'
-        f'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;">{kpi_cards}</div>'
+        f'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">{kpi_cards}</div>'
         f'</div>',
         unsafe_allow_html=True,
     )

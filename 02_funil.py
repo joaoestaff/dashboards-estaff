@@ -45,21 +45,21 @@ for _df in [df_pend, df_atend, df_impl, df_churn]:
         _df["DATA_CRIACAO"] = pd.to_datetime(_df["DATA_CRIACAO"], errors="coerce")
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## Filtros — Funil")
+#with st.sidebar:
+    #st.markdown("## Filtros — Funil")
 
-    responsaveis = ["Todos"]
-    if "Usuario_Responsavel" in df_atend.columns:
-        responsaveis += sorted(df_atend["Usuario_Responsavel"].dropna().unique().tolist())
-    sel_resp = st.selectbox("Responsável", responsaveis)
+    #responsaveis = ["Todos"]
+    #if "Usuario_Responsavel" in df_atend.columns:
+        #responsaveis += sorted(df_atend["Usuario_Responsavel"].dropna().unique().tolist())
+    #sel_resp = st.selectbox("Responsável", responsaveis)
 
-    ufs = ["Todos"]
-    if "UF" in df_pend.columns:
-        ufs += sorted(df_pend["UF"].dropna().unique().tolist())
-    sel_uf = st.selectbox("UF", ufs)
+    #ufs = ["Todos"]
+    #if "UF" in df_pend.columns:
+        #ufs += sorted(df_pend["UF"].dropna().unique().tolist())
+    #sel_uf = st.selectbox("UF", ufs)
 
-    st.markdown("---")
-    st.caption("Dashboard de Vendas v1.0\nEStaff © 2025")
+    #st.markdown("---")
+    #st.caption("Dashboard de Vendas v1.0\nEStaff © 2025")
 
 # ── Logo ─────────────────────────────────────────────────────────────────────
 st.image("Imagem1.png", width=140)

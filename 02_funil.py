@@ -15,7 +15,7 @@ st.set_page_config(
     page_title="Funil de Leads | EStaff",
     page_icon="🔻",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 css_path = Path(__file__).parent / "styles" / "custom.css"
@@ -44,25 +44,13 @@ for _df in [df_pend, df_atend, df_impl, df_churn]:
     if "DATA_CRIACAO" in _df.columns:
         _df["DATA_CRIACAO"] = pd.to_datetime(_df["DATA_CRIACAO"], errors="coerce")
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
-#with st.sidebar:
-    #st.markdown("## Filtros — Funil")
-
-    #responsaveis = ["Todos"]
-    #if "Usuario_Responsavel" in df_atend.columns:
-        #responsaveis += sorted(df_atend["Usuario_Responsavel"].dropna().unique().tolist())
-    #sel_resp = st.selectbox("Responsável", responsaveis)
-
-    #ufs = ["Todos"]
-    #if "UF" in df_pend.columns:
-        #ufs += sorted(df_pend["UF"].dropna().unique().tolist())
-    #sel_uf = st.selectbox("UF", ufs)
-
-    #st.markdown("---")
-    #st.caption("Dashboard de Vendas v1.0\nEStaff © 2025")
+# ── Filtros desativados (sidebar removida) ────────────────────────────────────
+sel_resp = "Todos"
+sel_uf   = "Todos"
 
 # ── Logo ─────────────────────────────────────────────────────────────────────
 st.image("Imagem1.png", width=140)
+
 # ── Header ────────────────────────────────────────────────────────────────────
 page_header("Funil Comercial", "Operacional")
 
@@ -95,15 +83,6 @@ df_pend  = filtrar_periodo(df_pend)
 df_atend = filtrar_periodo(df_atend)
 df_impl  = filtrar_periodo(df_impl)
 df_churn = filtrar_periodo(df_churn) if "DATA_CRIACAO" in df_churn.columns else df_churn
-
-sel_resp = "Todos"
-
-if sel_uf != "Todos":
-    df_pend  = df_pend[df_pend["UF"] == sel_uf]
-    df_atend = df_atend[df_atend["UF"] == sel_uf]
-    df_impl  = df_impl[df_impl["UF"] == sel_uf]
-    if "UF" in df_churn.columns:
-        df_churn = df_churn[df_churn["UF"] == sel_uf]
 
 total  = len(df_pend) + len(df_atend) + len(df_impl)
 ativos = len(df_atend) + len(df_impl)
@@ -305,11 +284,9 @@ st.markdown('<h2 style="font-size:1.8rem; margin-bottom:20px;">Acompanhamento Ch
 col_churn_summary, col_churn_table = st.columns([1, 3], gap="large")
 
 with col_churn_summary:
-    # Filtro local para Status Churn
     status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
     sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
 
-    # Aplicar filtro local
     df_churn_filtered = df_churn.copy()
     if sel_status_churn != "Todos":
         df_churn_filtered = df_churn_filtered[df_churn_filtered["Status_Cliente"] == sel_status_churn]

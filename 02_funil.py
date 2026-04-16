@@ -281,8 +281,11 @@ st.markdown("---")
 # ── Acompanhamento Churns ─────────────────────────────────────────────────────
 st.markdown('<h2 style="font-size:1.8rem; margin-bottom:16px;">Acompanhamento Churns</h2>', unsafe_allow_html=True)
 
-status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
-sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
+# Filtro menor (alinhado à esquerda)
+col_filter, _ = st.columns([1, 3])
+with col_filter:
+    status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
+    sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
 
 if sel_status_churn != "Todos":
     df_churn_filtered = df_churn[df_churn["Status_Cliente"] == sel_status_churn].copy()
@@ -339,13 +342,14 @@ def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> No
     )
 
 
+# Fonte igual ao resumo de leads (mais legível)
 def _churn_row(label, n, color):
     pct = fmt_pct(n / len(df_churn_filtered) * 100) if len(df_churn_filtered) else "0.0%"
     return (
         f'<div style="display:flex;justify-content:space-between;'
-        f'align-items:center;margin-bottom:4px;">'
-        f'<span style="color:#374151;font-size:0.78rem;">{label}</span>'
-        f'<span style="font-weight:700;color:{color};font-size:0.78rem;">'
+        f'align-items:center;margin-bottom:7px;">'
+        f'<span style="color:#374151;font-size:0.9rem;">{label}</span>'
+        f'<span style="font-weight:700;color:{color};font-size:0.9rem;">'
         f'{n} <span style="color:#94A3B8;font-weight:400">({pct})</span>'
         f'</span></div>'
     )
@@ -355,20 +359,20 @@ churn_rows = "".join(
     for label, color in CHURN_CONFIG
 )
 
-# Layout em colunas (alinhado com o resto da página)
-col_churn_table, col_churn_summary = st.columns([3, 1], gap="large")
+# Layout: resumo à esquerda + tabela à direita
+col_churn_summary, col_churn_table = st.columns([1, 3], gap="large")
 
 with col_churn_summary:
     st.markdown("<div style='margin-top:-10px'></div>", unsafe_allow_html=True)
 
     st.markdown(
-        f'<div style="{PANEL} padding:10px 12px;">'
-        f'<p style="{LABEL_STYLE}margin-bottom:6px;">Resumo por Status</p>'
+        f'<div style="{PANEL}">'
+        f'<p style="{LABEL_STYLE}margin-bottom:14px;">Resumo por Status</p>'
         f'{churn_rows}'
-        f'<hr style="border:none;border-top:1px solid #E2E8F0;margin:6px 0;">'
+        f'<hr style="border:none;border-top:1px solid #E2E8F0;margin:8px 0;">'
         f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-        f'<span style="color:#374151;font-size:0.78rem;font-weight:700;">Total</span>'
-        f'<span style="font-weight:700;color:#1B3A6B;font-size:0.95rem;">{len(df_churn_filtered)}</span>'
+        f'<span style="color:#374151;font-size:0.84rem;font-weight:700;">Total</span>'
+        f'<span style="font-weight:700;color:#1B3A6B;font-size:1.05rem;">{len(df_churn_filtered)}</span>'
         f'</div></div>',
         unsafe_allow_html=True,
     )

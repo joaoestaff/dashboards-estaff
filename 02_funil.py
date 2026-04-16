@@ -62,8 +62,7 @@ with st.sidebar:
     st.caption("Dashboard de Vendas v1.0\nEStaff © 2025")
 
 # ── Logo ─────────────────────────────────────────────────────────────────────
-st.image(r"C:\Users\Joao Henrique\Pictures\Imagem1.png", width=140)
-
+st.image("Imagem1.png", width=140)
 # ── Header ────────────────────────────────────────────────────────────────────
 page_header("Funil Comercial", "Operacional")
 

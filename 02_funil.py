@@ -284,9 +284,11 @@ st.markdown('<h2 style="font-size:1.8rem; margin-bottom:20px;">Acompanhamento Ch
 col_churn_summary, col_churn_table = st.columns([1, 3], gap="large")
 
 with col_churn_summary:
+    # Filtro local para Status Churn
     status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
     sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
 
+    # Aplicar filtro local
     df_churn_filtered = df_churn.copy()
     if sel_status_churn != "Todos":
         df_churn_filtered = df_churn_filtered[df_churn_filtered["Status_Cliente"] == sel_status_churn]
@@ -332,13 +334,32 @@ def _highlight_risco(row):
         return ["background-color: #fef3c7"] * len(row)
     return [""] * len(row)
 
+def _format_churn_display(df):
+    """Formata as colunas de moeda e percentual para exibição"""
+    df_display = df.copy()
+    
+    # Formata TRANSACIONADO como moeda
+    if "TRANSACIONADO" in df_display.columns:
+        df_display["TRANSACIONADO"] = df_display["TRANSACIONADO"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if pd.notna(x) else "R$ 0,00"
+        )
+    
+    # Formata TAXA_% como percentual
+    if "TAXA_%" in df_display.columns:
+        df_display["TAXA_%"] = df_display["TAXA_%"].apply(
+            lambda x: f"{x:.2f}%" if pd.notna(x) else "0,00%"
+        )
+    
+    return df_display
+
 with col_churn_table:
     section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
     if df_churn_filtered.empty:
         st.info("Nenhum registro para os filtros selecionados.")
     else:
+        df_churn_display = _format_churn_display(df_churn_filtered)
         st.dataframe(
-            df_churn_filtered.style.apply(_highlight_risco, axis=1),
+            df_churn_display.style.apply(_highlight_risco, axis=1),
             use_container_width=True,
             height=400,
         )

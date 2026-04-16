@@ -356,9 +356,11 @@ with col_churn_table:
         st.info("Nenhum registro para os filtros selecionados.")
     else:
         df_churn_display = _format_churn_display(df_churn_filtered)
+        cols_to_show = ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
+                        "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]
+        existing_cols = [c for c in cols_to_show if c in df_churn_display.columns]
         st.dataframe(
-            df_churn_display[["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes", 
-                              "Dias_Sem_OP", "Status_Cliente", "TRANSACIONADO", "TAXA_%"]].reset_index(drop=True).style.apply(_highlight_risco, axis=1),
+            df_churn_display[existing_cols].reset_index(drop=True).style.apply(_highlight_risco, axis=1),
             use_container_width=True,
             height=400,
         )

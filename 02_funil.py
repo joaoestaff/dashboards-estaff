@@ -50,7 +50,7 @@ for _df in [df_pend_orig, df_atend_orig, df_impl_orig, df_oper_orig, df_churn_or
         _df["DATA_CRIACAO"] = pd.to_datetime(_df["DATA_CRIACAO"], errors="coerce")
 
 # ── Logo ─────────────────────────────────────────────────────────────────────
-# st.image("Imagem1.png", width=140)
+st.image("Imagem1.png", width=140)
 
 # ── Header ────────────────────────────────────────────────────────────────────
 page_header("Funil Comercial", "Operacional")
@@ -157,6 +157,29 @@ LABEL_STYLE = (
 VALUE_STYLE = "font-size:1.5rem;font-weight:700;color:#1B3A6B;margin:0 0 2px 0;"
 HELP_STYLE  = "font-size:0.70rem;color:#535c69;margin:0;"
 
+def _kpi_span(label, value, help_text, span, badge=""):
+    return (
+        f'<div style="grid-column:span {span};background:#fff;border:1px solid #E2E8F0;'
+        f'border-radius:8px;padding:14px 12px;text-align:center;">'
+        f'<p style="{LABEL_STYLE}">{label}</p>'
+        f'<p style="{VALUE_STYLE}">{value}</p>'
+        f'<p style="{HELP_STYLE}">{help_text}</p>'
+        f'{badge}'
+        f'</div>'
+    )
+
+def _delta_badge(current, previous, is_pct=True):
+    if previous is None:
+        return ""
+    delta = current - previous
+    if is_pct:
+        delta_str = fmt_pct(delta)
+    else:
+        delta_str = fmt_num(delta)
+    color = "#16A34A" if delta > 0 else ("#DC2626" if delta < 0 else "#6B7280")
+    sign = "+" if delta > 0 else ""
+    return f'<span style="color:{color};font-size:0.75rem;font-weight:700;margin-left:6px;">{sign}{delta_str}</span>'
+
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 taxa_conv   = len(df_impl) / total * 100  if total  else 0.0
 taxa_impl   = len(df_impl) / ativos * 100 if ativos else 0.0
@@ -174,35 +197,82 @@ else:
     taxa_conv_ant = taxa_impl_ant = nao_atend_ant = taxa_avanco_ant = None
     atend_ant_n = oper_ant_n = None
 
-def _delta_badge(atual, anterior, is_pct=True):
-    """Badge colorido mostrando variação vs período anterior."""
-    if anterior is None:
-        return ""
-    diff = atual - anterior
-    if diff > 0:
-        cor, seta, sinal = "#10B981", "▲", "+"
-    elif diff < 0:
-        cor, seta, sinal = "#EF4444", "▼", ""
-    else:
-        cor, seta, sinal = "#94A3B8", "●", ""
-    txt = f"{seta} {sinal}{diff:.1f} p.p." if is_pct else f"{seta} {sinal}{diff:.0f}"
-    return (
-        f'<span style="display:inline-block;margin-top:5px;padding:2px 8px;'
-        f'border-radius:20px;background:{cor}18;color:{cor};'
-        f'font-size:0.67rem;font-weight:700;">{txt} vs ant.</span>'
+
+# ── SÉRIE TEMPORAL (BASE DOS GRÁFICOS) ─────────────────────────────────────────
+def build_time_series(df, label):
+    if df.empty or "DATA_CRIACAO" not in df.columns:
+        return pd.DataFrame(columns=["DATA", "Status", "Qtd"])
+    
+    temp = df.copy()
+    temp["DATA"] = temp["DATA_CRIACAO"].dt.date
+    temp["Status"] = label
+    
+    return temp.groupby(["DATA", "Status"]).size().reset_index(name="Qtd")
+
+
+df_ts = pd.concat([
+    build_time_series(df_pend,  "Pendentes"),
+    build_time_series(df_atend, "Atendimento"),
+    build_time_series(df_impl,  "Implantação"),
+    build_time_series(df_oper,  "Operação"),
+])
+
+if not df_ts.empty:
+    df_ts = df_ts.sort_values("DATA")
+
+
+# ── GRÁFICO 1: EVOLUÇÃO DO FUNIL ──────────────────────────────────────────────
+fig_funil = px.line(
+    df_ts,
+    x="DATA",
+    y="Qtd",
+    color="Status",
+)
+
+fig_funil.update_layout(
+    height=420,
+    margin=dict(l=20, r=20, t=40, b=20),
+    legend_title="",
+    xaxis_title="",
+    yaxis_title="",
+    legend=dict(orientation="h", y=1.02)  # 🔥 melhora MUITO o layout
+)
+
+
+# ── GRÁFICO 2: TAXA DE CONVERSÃO AO LONGO DO TEMPO ────────────────────────────
+df_conv = pd.concat([
+    df_pend.assign(Tipo="Pend"),
+    df_atend.assign(Tipo="Atend"),
+    df_impl.assign(Tipo="Impl"),
+    df_oper.assign(Tipo="Oper"),
+])
+
+if not df_conv.empty:
+    df_conv["DATA"] = df_conv["DATA_CRIACAO"].dt.date
+
+    agg = df_conv.groupby(["DATA", "Tipo"]).size().unstack(fill_value=0)
+
+    agg["Total"] = agg.sum(axis=1)
+    agg["Conversao_%"] = (agg.get("Impl", 0) / agg["Total"] * 100).fillna(0)
+
+    agg = agg.reset_index().sort_values("DATA")
+
+    fig_conv = px.line(
+        agg,
+        x="DATA",
+        y="Conversao_%",
     )
 
-def _kpi_span(label, value, help_text, span, badge=""):
-    return (
-        f'<div style="grid-column:span {span};background:#fff;border:1px solid #E2E8F0;'
-        f'border-radius:8px;padding:14px 12px;text-align:center;">'
-        f'<p style="{LABEL_STYLE}">{label}</p>'
-        f'<p style="{VALUE_STYLE}">{value}</p>'
-        f'<p style="{HELP_STYLE}">{help_text}</p>'
-        f'{badge}'
-        f'</div>'
+    fig_conv.update_layout(
+        height=420,
+        margin=dict(l=20, r=20, t=40, b=20),
+        xaxis_title="",
+        yaxis_title="",
     )
+else:
+    fig_conv = go.Figure()
 
+# ── KPIs UI ───────────────────────────────────────────────────────────────────
 kpi_cards = (
     _kpi_span("Taxa de Conversão",    fmt_pct(taxa_conv),      "Lead → Implantação",             1,
               _delta_badge(taxa_conv,   taxa_conv_ant,   is_pct=True)) +
@@ -256,10 +326,11 @@ summary_rows = "".join(
     for label, color in STATUS_CONFIG
 )
 
-# ── Layout: KPIs + resumo ─────────────────────────────────────────────────────
+# ── Layout: KPIs + gráficos + resumo ──────────────────────────────────────────
 col_kpis, col_summary = st.columns([3, 1], gap="large")
 
 with col_kpis:
+    # KPIs
     st.markdown(
         f'<div style="{PANEL}">'
         f'<p style="{LABEL_STYLE}margin-bottom:14px;">Indicadores</p>'
@@ -267,6 +338,32 @@ with col_kpis:
         f'</div>',
         unsafe_allow_html=True,
     )
+
+    # ESPAÇO
+    st.markdown("<div style='margin-top:16px'></div>", unsafe_allow_html=True)
+
+    # ── GRÁFICOS (CENTRALIZADOS E HARMÔNICOS) ─────────────────────────────────────
+st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
+
+# 🔥 margem lateral (segredo do layout bonito)
+col_left, col_main, col_right = st.columns([0.3, 25, 0.3])
+
+with col_main:
+    col_g1, col_g2 = st.columns(2, gap="large")
+
+    with col_g1:
+        st.markdown(
+    "<h4 style='text-align: center;'>Evolução do Funil</h4>",
+    unsafe_allow_html=True
+)
+        st.plotly_chart(fig_funil, use_container_width=True)
+
+    with col_g2:
+        st.markdown(
+    "<h4 style='text-align: center;'>Conversão (%)</h4>",
+    unsafe_allow_html=True
+)
+        st.plotly_chart(fig_conv, use_container_width=True)
 
 with col_summary:
     st.markdown(

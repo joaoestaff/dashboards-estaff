@@ -5,6 +5,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+from datetime import timedelta
+
+import plotly.graph_objects as go
+import plotly.express as px
 
 from data.db import get_engine
 from data.queries_funil import SQL_CHURNS, SQL_PENDENTES, SQL_ATENDIMENTO, SQL_IMPLANTACAO, SQL_OPERACAO
@@ -34,62 +38,109 @@ def load_funil():
     return pend, atend, impl, oper, churn
 
 try:
-    df_pend, df_atend, df_impl, df_oper, df_churn = load_funil()
+    df_pend_orig, df_atend_orig, df_impl_orig, df_oper_orig, df_churn_orig = load_funil()
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.info("Verifique as variáveis no arquivo `.env` (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD).")
     st.stop()
 
-# Garantir DATA_CRIACAO como datetime em todos os DFs
-for _df in [df_pend, df_atend, df_impl, df_oper, df_churn]:
+# Garantir DATA_CRIACAO como datetime em todos os DFs originais
+for _df in [df_pend_orig, df_atend_orig, df_impl_orig, df_oper_orig, df_churn_orig]:
     if "DATA_CRIACAO" in _df.columns:
         _df["DATA_CRIACAO"] = pd.to_datetime(_df["DATA_CRIACAO"], errors="coerce")
-
-# Garantir DATA_CRIACAO como datetime em todos os DFs
-for _df in [df_pend, df_atend, df_impl, df_churn]:
-    if "DATA_CRIACAO" in _df.columns:
-        _df["DATA_CRIACAO"] = pd.to_datetime(_df["DATA_CRIACAO"], errors="coerce")
-
-# ── Filtros desativados (sidebar removida) ────────────────────────────────────
-sel_resp = "Todos"
-sel_uf   = "Todos"
 
 # ── Logo ─────────────────────────────────────────────────────────────────────
-st.image("Imagem1.png", width=140)
+# st.image("Imagem1.png", width=140)
 
 # ── Header ────────────────────────────────────────────────────────────────────
 page_header("Funil Comercial", "Operacional")
 
-# ── Filtro de período ─────────────────────────────────────────────────────────
+# ── Filtro de período + comparativo ──────────────────────────────────────────
 all_dates = pd.concat([
-    df_pend["DATA_CRIACAO"], df_atend["DATA_CRIACAO"], df_impl["DATA_CRIACAO"], df_oper["DATA_CRIACAO"]
+    df_pend_orig["DATA_CRIACAO"],
+    df_atend_orig["DATA_CRIACAO"],
+    df_impl_orig["DATA_CRIACAO"],
+    df_oper_orig["DATA_CRIACAO"],
 ]).dropna()
 
 date_min = all_dates.min().date()
 date_max = all_dates.max().date()
 
-col_f1, col_f2, col_f3 = st.columns([1, 1, 4])
+col_f1, col_f2, col_f3, col_f4 = st.columns([1, 1, 1.4, 2.6])
 with col_f1:
     data_ini = st.date_input("De", value=date_min, min_value=date_min, max_value=date_max)
 with col_f2:
     data_fim = st.date_input("Até", value=date_max, min_value=date_min, max_value=date_max)
+with col_f3:
+    opcoes_comparativo = {
+        "Nenhum":                 None,
+        "Período igual anterior": "igual",
+        "Mês anterior":           "mes",
+        "Semana anterior":        "semana",
+        "Trimestre anterior":     "trimestre",
+    }
+    sel_comp = st.selectbox("Comparar com", list(opcoes_comparativo.keys()), index=0)
 
 st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
 
+# ── Helper: calcular período anterior ────────────────────────────────────────
+def get_periodo_anterior(ini, fim, modo):
+    if modo is None:
+        return None, None
+    delta = fim - ini
+    if modo == "igual":
+        fim_ant = ini - timedelta(days=1)
+        ini_ant = fim_ant - delta
+    elif modo == "semana":
+        fim_ant = ini - timedelta(days=1)
+        ini_ant = fim_ant - timedelta(days=6)
+    elif modo == "mes":
+        primeiro = ini.replace(day=1)
+        fim_ant  = primeiro - timedelta(days=1)
+        ini_ant  = fim_ant.replace(day=1)
+    elif modo == "trimestre":
+        primeiro = ini.replace(day=1)
+        fim_ant  = primeiro - timedelta(days=1)
+        mes_ini  = ((fim_ant.month - 1) // 3) * 3 + 1
+        ini_ant  = fim_ant.replace(month=mes_ini, day=1)
+    else:
+        return None, None
+    return ini_ant, fim_ant
+
+modo_comp = opcoes_comparativo[sel_comp]
+ini_ant, fim_ant = get_periodo_anterior(data_ini, data_fim, modo_comp)
+
 # ── Filtros aplicados ─────────────────────────────────────────────────────────
-def filtrar_periodo(df):
+def filtrar_periodo(df, d_ini, d_fim):
     if "DATA_CRIACAO" not in df.columns:
         return df
     return df[
-        (df["DATA_CRIACAO"].dt.date >= data_ini) &
-        (df["DATA_CRIACAO"].dt.date <= data_fim)
-    ]
+        (df["DATA_CRIACAO"].dt.date >= d_ini) &
+        (df["DATA_CRIACAO"].dt.date <= d_fim)
+    ].copy()
 
-df_pend  = filtrar_periodo(df_pend)
-df_atend = filtrar_periodo(df_atend)
-df_impl  = filtrar_periodo(df_impl)
-df_oper  = filtrar_periodo(df_oper)
-df_churn = filtrar_periodo(df_churn) if "DATA_CRIACAO" in df_churn.columns else df_churn
+df_pend  = filtrar_periodo(df_pend_orig,  data_ini, data_fim)
+df_atend = filtrar_periodo(df_atend_orig, data_ini, data_fim)
+df_impl  = filtrar_periodo(df_impl_orig,  data_ini, data_fim)
+df_oper  = filtrar_periodo(df_oper_orig,  data_ini, data_fim)
+df_churn = (
+    filtrar_periodo(df_churn_orig, data_ini, data_fim)
+    if "DATA_CRIACAO" in df_churn_orig.columns
+    else df_churn_orig.copy()
+)
+
+# Período anterior
+has_comp = ini_ant is not None
+if has_comp:
+    df_pend_ant  = filtrar_periodo(df_pend_orig,  ini_ant, fim_ant)
+    df_atend_ant = filtrar_periodo(df_atend_orig, ini_ant, fim_ant)
+    df_impl_ant  = filtrar_periodo(df_impl_orig,  ini_ant, fim_ant)
+    df_oper_ant  = filtrar_periodo(df_oper_orig,  ini_ant, fim_ant)
+    total_ant  = len(df_pend_ant) + len(df_atend_ant) + len(df_impl_ant) + len(df_oper_ant)
+    ativos_ant = len(df_atend_ant) + len(df_impl_ant) + len(df_oper_ant)
+else:
+    df_pend_ant = df_atend_ant = df_impl_ant = df_oper_ant = None
+    total_ant = ativos_ant = 0
 
 total  = len(df_pend) + len(df_atend) + len(df_impl) + len(df_oper)
 ativos = len(df_atend) + len(df_impl) + len(df_oper)
@@ -107,44 +158,69 @@ VALUE_STYLE = "font-size:1.5rem;font-weight:700;color:#1B3A6B;margin:0 0 2px 0;"
 HELP_STYLE  = "font-size:0.70rem;color:#535c69;margin:0;"
 
 # ── KPIs ──────────────────────────────────────────────────────────────────────
-taxa_conv   = len(df_impl) / total * 100 if total else 0
-taxa_impl   = len(df_impl) / ativos * 100 if ativos else 0
-taxa_oper   = len(df_oper) / total * 100 if total else 0
-nao_atend   = len(df_pend) / total * 100 if total else 0
-taxa_avanco = ativos / total * 100 if total else 0
+taxa_conv   = len(df_impl) / total * 100  if total  else 0.0
+taxa_impl   = len(df_impl) / ativos * 100 if ativos else 0.0
+nao_atend   = len(df_pend) / total * 100  if total  else 0.0
+taxa_avanco = ativos / total * 100         if total  else 0.0
 
-def _kpi_card(label, value, help_text):
+if has_comp:
+    taxa_conv_ant   = len(df_impl_ant) / total_ant * 100  if total_ant  else 0.0
+    taxa_impl_ant   = len(df_impl_ant) / ativos_ant * 100 if ativos_ant else 0.0
+    nao_atend_ant   = len(df_pend_ant) / total_ant * 100  if total_ant  else 0.0
+    taxa_avanco_ant = ativos_ant / total_ant * 100          if total_ant  else 0.0
+    atend_ant_n     = len(df_atend_ant)
+    oper_ant_n      = len(df_oper_ant)
+else:
+    taxa_conv_ant = taxa_impl_ant = nao_atend_ant = taxa_avanco_ant = None
+    atend_ant_n = oper_ant_n = None
+
+def _delta_badge(atual, anterior, is_pct=True):
+    """Badge colorido mostrando variação vs período anterior."""
+    if anterior is None:
+        return ""
+    diff = atual - anterior
+    if diff > 0:
+        cor, seta, sinal = "#10B981", "▲", "+"
+    elif diff < 0:
+        cor, seta, sinal = "#EF4444", "▼", ""
+    else:
+        cor, seta, sinal = "#94A3B8", "●", ""
+    txt = f"{seta} {sinal}{diff:.1f} p.p." if is_pct else f"{seta} {sinal}{diff:.0f}"
     return (
-        f'<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;'
-        f'padding:14px 12px;text-align:center;flex:1;">'
-        f'<p style="{LABEL_STYLE}">{label}</p>'
-        f'<p style="{VALUE_STYLE}">{value}</p>'
-        f'<p style="{HELP_STYLE}">{help_text}</p>'
-        f'</div>'
+        f'<span style="display:inline-block;margin-top:5px;padding:2px 8px;'
+        f'border-radius:20px;background:{cor}18;color:{cor};'
+        f'font-size:0.67rem;font-weight:700;">{txt} vs ant.</span>'
     )
 
-def _kpi_span(label, value, help_text, span):
+def _kpi_span(label, value, help_text, span, badge=""):
     return (
         f'<div style="grid-column:span {span};background:#fff;border:1px solid #E2E8F0;'
         f'border-radius:8px;padding:14px 12px;text-align:center;">'
         f'<p style="{LABEL_STYLE}">{label}</p>'
         f'<p style="{VALUE_STYLE}">{value}</p>'
         f'<p style="{HELP_STYLE}">{help_text}</p>'
+        f'{badge}'
         f'</div>'
     )
 
 kpi_cards = (
-    _kpi_span("Taxa de Conversão",    fmt_pct(taxa_conv),      "Lead → Implantação",              1) +
-    _kpi_span("Taxa em Implantação",  fmt_pct(taxa_impl),      "Sobre ativos (excl. pendentes)",  1) +
-    _kpi_span("Em Atendimento",       fmt_num(len(df_atend)),  "Leads em processo comercial",     1) +
-    _kpi_span("Em Operação",          fmt_num(len(df_oper)),   "Leads em operação",               1) +
-    _kpi_span("Não Atendimento",      fmt_pct(nao_atend),      "% de leads pendentes",            1) +
-    _kpi_span("Taxa de Avanço Total", fmt_pct(taxa_avanco),    "Leads além do estágio inicial",   1)
+    _kpi_span("Taxa de Conversão",    fmt_pct(taxa_conv),      "Lead → Implantação",             1,
+              _delta_badge(taxa_conv,   taxa_conv_ant,   is_pct=True)) +
+    _kpi_span("Taxa em Implantação",  fmt_pct(taxa_impl),      "Sobre ativos (excl. pendentes)", 1,
+              _delta_badge(taxa_impl,   taxa_impl_ant,   is_pct=True)) +
+    _kpi_span("Em Atendimento",       fmt_num(len(df_atend)),  "Leads em processo comercial",    1,
+              _delta_badge(len(df_atend), atend_ant_n,   is_pct=False)) +
+    _kpi_span("Em Operação",          fmt_num(len(df_oper)),   "Leads em operação",              1,
+              _delta_badge(len(df_oper),  oper_ant_n,    is_pct=False)) +
+    _kpi_span("Não Atendimento",      fmt_pct(nao_atend),      "% de leads pendentes",           1,
+              _delta_badge(nao_atend,   nao_atend_ant,   is_pct=True)) +
+    _kpi_span("Taxa de Avanço Total", fmt_pct(taxa_avanco),    "Leads além do estágio inicial",  1,
+              _delta_badge(taxa_avanco, taxa_avanco_ant, is_pct=True))
 )
 
-# ── Resumo por status ────────────────────────────────────────────────────────
+# ── Resumo por status ─────────────────────────────────────────────────────────
 STATUS_CONFIG = [
-    ("1. Sem atendimento",  "#F59E0B"),
+    ("1. Sem atendimento",     "#F59E0B"),
     ("2. Em contato",          "#3B82F6"),
     ("3. Reunião agendada",    "#6366F1"),
     ("4. Em negociação",       "#8B5CF6"),
@@ -180,6 +256,7 @@ summary_rows = "".join(
     for label, color in STATUS_CONFIG
 )
 
+# ── Layout: KPIs + resumo ─────────────────────────────────────────────────────
 col_kpis, col_summary = st.columns([3, 1], gap="large")
 
 with col_kpis:
@@ -203,8 +280,6 @@ with col_summary:
         f'</div></div>',
         unsafe_allow_html=True,
     )
-
-st.markdown("---")
 
 # ── Tabelas ───────────────────────────────────────────────────────────────────
 def show_table(df: pd.DataFrame, cols: list[str], height: int = 300) -> None:
@@ -256,17 +331,10 @@ def show_table_with_sla(df: pd.DataFrame, cols: list[str], sla_col: str = "SLA_U
             return [""] * len(row)
 
         styled = display_df.style.apply(_highlight_sla, axis=1)
-        st.dataframe(
-            styled,
-            use_container_width=True,
-            height=height,
-        )
+        st.dataframe(styled, use_container_width=True, height=height)
     else:
-        st.dataframe(
-            display_df,
-            use_container_width=True,
-            height=height,
-        )
+        st.dataframe(display_df, use_container_width=True, height=height)
+
 
 section_title(f"Leads Pendentes  ·  {len(df_pend)} registros")
 show_table(df_pend, [
@@ -297,12 +365,13 @@ st.markdown("---")
 # ── Acompanhamento Churns ─────────────────────────────────────────────────────
 st.markdown('<h2 style="font-size:1.8rem; margin-bottom:16px;">Acompanhamento Churns</h2>', unsafe_allow_html=True)
 
-# Filtro menor e alinhado
 col_filter, _ = st.columns([1, 3.3])
 with col_filter:
     st.markdown("<div style='margin-top:-5px'></div>", unsafe_allow_html=True)
-
-    status_churn_options = ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist()) if not df_churn.empty else ["Todos"]
+    status_churn_options = (
+        ["Todos"] + sorted(df_churn["Status_Cliente"].dropna().unique().tolist())
+        if not df_churn.empty else ["Todos"]
+    )
     sel_status_churn = st.selectbox("Filtrar por Status", status_churn_options, key="churn_status")
 
 if sel_status_churn != "Todos":
@@ -316,7 +385,11 @@ CHURN_CONFIG = [
     ("Churn",    "#DC2626"),
 ]
 
-churn_counts = df_churn_filtered["Status_Cliente"].value_counts() if not df_churn_filtered.empty else pd.Series(dtype=int)
+churn_counts = (
+    df_churn_filtered["Status_Cliente"].value_counts()
+    if not df_churn_filtered.empty
+    else pd.Series(dtype=int)
+)
 
 
 def _highlight_risco(row):
@@ -331,10 +404,10 @@ def _format_churn_display(df):
         df_display.rename(columns={"TAXA_%%": "TAXA_%"}, inplace=True)
     if "TAXA_PCT" in df_display.columns and "TAXA_%" not in df_display.columns:
         df_display.rename(columns={"TAXA_PCT": "TAXA_%"}, inplace=True)
-
     if "TRANSACIONADO" in df_display.columns:
         df_display["TRANSACIONADO"] = df_display["TRANSACIONADO"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if pd.notna(x) else "R$ 0,00"
+            lambda x: f"R$ {x:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+            if pd.notna(x) else "R$ 0,00"
         )
     if "TAXA_%" in df_display.columns:
         df_display["TAXA_%"] = df_display["TAXA_%"].apply(
@@ -347,12 +420,10 @@ def show_table_churn(df: pd.DataFrame, cols: list[str], height: int = 400) -> No
     if df.empty:
         st.info("Nenhum registro para os filtros selecionados.")
         return
-
     df_display = _format_churn_display(df)
     existing = [c for c in cols if c in df_display.columns]
     if not existing:
         existing = list(df_display.columns)
-
     st.dataframe(
         df_display[existing].reset_index(drop=True).style.apply(_highlight_risco, axis=1),
         use_container_width=True,
@@ -376,12 +447,10 @@ churn_rows = "".join(
     for label, color in CHURN_CONFIG
 )
 
-# Layout: resumo à esquerda + tabela à direita
 col_churn_summary, col_churn_table = st.columns([1, 3], gap="large")
 
 with col_churn_summary:
     st.markdown("<div style='margin-top:-10px'></div>", unsafe_allow_html=True)
-
     st.markdown(
         f'<div style="{PANEL}">'
         f'<p style="{LABEL_STYLE}margin-bottom:14px;">Resumo por Status</p>'
@@ -395,11 +464,8 @@ with col_churn_summary:
     )
 
 with col_churn_table:
-    # sobe a tabela pra alinhar com o filtro
-    st.markdown("<div style='margin-top:-45px'></div>", unsafe_allow_html=True)
-
+    st.markdown("<div style='margin-top:-10px'></div>", unsafe_allow_html=True)
     section_title(f"Acompanhamento Churns  ·  {len(df_churn_filtered)} registros")
-
     show_table_churn(
         df_churn_filtered,
         ["company_id", "Cliente", "Primeira_OP", "Ultima_OP", "Ano_Mes",

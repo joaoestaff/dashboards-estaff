@@ -286,6 +286,12 @@ show_table(df_impl, [
     "Data_Mudanca_Status", "CNPJ", "Telefone", "DATA_CRIACAO",
 ])
 
+section_title(f"Leads em Operação  ·  {len(df_oper)} registros")
+show_table_with_sla(df_oper, [
+    "ID_Casa", "Casa", "Status_Comercial", "Usuario_Responsavel",
+    "Data_Mudanca_Status", "SLA_Ultimo_Status", "CNPJ", "Telefone", "DATA_CRIACAO",
+])
+
 st.markdown("---")
 
 # ── Acompanhamento Churns ─────────────────────────────────────────────────────

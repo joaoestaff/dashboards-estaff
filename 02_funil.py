@@ -283,7 +283,7 @@ show_table_with_sla(df_atend, [
 section_title(f"Leads em Implantação  ·  {len(df_impl)} registros")
 show_table(df_impl, [
     "ID_Casa", "Casa", "Status_Comercial", "Usuario_Responsavel",
-    "Data_Mudanca_Status", "CNPJ", "Telefone", "DATA_CRIACAO",
+    "Data_Mudanca_Status", "SLA_Ultimo_Status", "CNPJ", "Telefone", "DATA_CRIACAO",
 ])
 
 section_title(f"Leads em Operação  ·  {len(df_oper)} registros")

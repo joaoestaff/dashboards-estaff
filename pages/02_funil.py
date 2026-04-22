@@ -48,6 +48,10 @@ except Exception as e:
 for _df in [df_pend_orig, df_atend_orig, df_impl_orig, df_oper_orig, df_churn_orig]:
     if "DATA_CRIACAO" in _df.columns:
         _df["DATA_CRIACAO"] = pd.to_datetime(_df["DATA_CRIACAO"], errors="coerce")
+        
+# ── Sidebar ───────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("## Funil Comercial")
 
 # ── Logo ─────────────────────────────────────────────────────────────────────
 st.image("Imagem1.png", width=140)

@@ -48,9 +48,8 @@ for _df in [df_pendentes, df_assinados]:
         if 'DATA' in col.upper():
             _df[col] = pd.to_datetime(_df[col], errors="coerce")
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("Demonstrativo de Contratos")
+# ── Logo ─────────────────────────────────────────────────────────────────────
+st.image("Imagem1.png", width=140)
 
 # ── Header ────────────────────────────────────────────────────────────────────
 page_header("Demonstrativo de Contratos", "📄")

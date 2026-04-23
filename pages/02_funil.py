@@ -51,7 +51,7 @@ for _df in [df_pend_orig, df_atend_orig, df_impl_orig, df_oper_orig, df_churn_or
         
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## Funil Comercial")
+    st.markdown("")
 
 # ── Logo ─────────────────────────────────────────────────────────────────────
 st.image("Imagem1.png", width=140)

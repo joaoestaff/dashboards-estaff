@@ -13,6 +13,12 @@ SELECT
     tc.CORPORATE_NAME as "Razão Social",
     tc.CITY,
     tc.UF,
+    -- Tempo detalhado legível
+CONCAT(
+    TIMESTAMPDIFF(DAY, tc.DATA_CRIACAO, NOW()), 'd ',
+    MOD(TIMESTAMPDIFF(HOUR, tc.DATA_CRIACAO, NOW()), 24), 'h ',
+    MOD(TIMESTAMPDIFF(MINUTE, tc.DATA_CRIACAO, NOW()), 60), 'min'
+) as 'SLA_Ultimo_Status',
     tc.CNPJ,
     tc.PHONE as "Telefone",
     tc.WEBSITE,

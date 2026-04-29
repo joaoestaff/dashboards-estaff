@@ -439,7 +439,7 @@ def show_table_with_sla(df: pd.DataFrame, cols: list[str], sla_col: str = "SLA_U
 
 section_title(f"Leads Pendentes  ·  {len(df_pend)} registros")
 show_table(df_pend, [
-    "ID_Casa", "Casa", "Razão Social", "CITY", "UF",
+    "ID_Casa", "Casa", "Razão Social", "CITY", "UF", "SLA_Ultimo_Status",
     "CNPJ", "Telefone", "DATA_CRIACAO",
 ])
 
